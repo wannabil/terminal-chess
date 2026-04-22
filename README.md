@@ -1,8 +1,8 @@
 # Terminal Chess
 
 A local terminal chess game with full FIDE rule enforcement, algebraic-notation
-move entry, Unicode board rendering, two-player hotseat mode, and a one-player
-mode against Stockfish.
+move entry, Unicode board rendering, two-player hotseat mode, a one-player
+mode against Stockfish, and a blindfold mode for training mental visualization.
 
 Rules, move generation, and engine protocol all rely on
 [`python-chess`](https://python-chess.readthedocs.io/) — this project handles
@@ -67,7 +67,14 @@ python -m src.main                          # prompts for mode
 python -m src.main --mode two               # two-player hotseat
 python -m src.main --mode vs --skill 8      # vs Stockfish at skill 8
 python -m src.main --mode vs --color black  # play as Black
+python -m src.main --blindfold              # no board shown
 ```
+
+### Blindfold mode
+
+`--blindfold` (or answering `y` at the setup prompt) suppresses board rendering
+entirely — you see only the move prompts and confirmations. Use `:history` or
+`:fen` if you lose track of the position.
 
 ## Move entry
 
