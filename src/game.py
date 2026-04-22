@@ -71,6 +71,7 @@ class Game:
     human_color: chess.Color = chess.WHITE
     engine: Optional[Engine] = None
     use_color: bool = False
+    blindfold: bool = False
     input_fn: Callable[[str], str] = input
     output_fn: Callable[[str], None] = print
 
@@ -84,6 +85,8 @@ class Game:
             return ":quit"
 
     def render(self, last_move: chess.Move | None = None) -> None:
+        if self.blindfold:
+            return
         perspective = self.human_color if self.vs_computer else self.board.turn
         self.say(
             render_board(
@@ -224,6 +227,7 @@ def run_interactive(
     skill: int | None = None,
     color: str | None = None,
     use_color: bool = False,
+    blindfold: bool = False,
 ) -> int:
     print(BANNER)
 
@@ -237,7 +241,14 @@ def run_interactive(
 
     vs_computer = chosen_mode in ("2", "vs", "computer", "ai")
 
-    game = Game(vs_computer=vs_computer, use_color=use_color)
+    if not blindfold:
+        raw = input("Blindfold mode (no board shown)? (y/N): ").strip().lower()
+        blindfold = raw == "y"
+
+    if blindfold:
+        print("Blindfold mode on. Use :history or :fen if you get lost.")
+
+    game = Game(vs_computer=vs_computer, use_color=use_color, blindfold=blindfold)
 
     if vs_computer:
         chosen_skill = skill if skill is not None else _prompt_int(

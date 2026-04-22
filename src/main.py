@@ -29,7 +29,14 @@ from .game import run_interactive
     help="Which side to play vs the computer.",
 )
 @click.option("--no-color", is_flag=True, help="Disable last-move highlighting.")
-def main(mode: str | None, skill: int | None, color: str | None, no_color: bool) -> None:
+@click.option("--blindfold", is_flag=True, help="Play without the board rendered.")
+def main(
+    mode: str | None,
+    skill: int | None,
+    color: str | None,
+    no_color: bool,
+    blindfold: bool,
+) -> None:
     """Terminal Chess — play chess in your terminal."""
     # Normalize numeric mode to named.
     if mode == "1":
@@ -42,6 +49,7 @@ def main(mode: str | None, skill: int | None, color: str | None, no_color: bool)
         skill=skill,
         color=color,
         use_color=not no_color,
+        blindfold=blindfold,
     )
     sys.exit(rc)
 
