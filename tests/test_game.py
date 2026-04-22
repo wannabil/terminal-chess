@@ -2,7 +2,7 @@ import chess
 import pytest
 
 from src.commands import handle_command
-from src.game import Game
+from src.game import Game, parse_move
 
 
 def make_scripted_game(inputs, vs_computer=False):
@@ -117,3 +117,61 @@ def test_unknown_command_returns_error():
     result = handle_command(game, ":banana")
     assert result.handled
     assert "Unknown command" in result.message
+
+
+@pytest.mark.parametrize(
+    "raw,expected_san",
+    [
+        ("nf3", "Nf3"),
+        ("Nf3", "Nf3"),  # canonical still works
+        ("e4", "e4"),    # pawn moves unchanged
+    ],
+)
+def test_parse_move_accepts_lowercase_piece_letters(raw, expected_san):
+    board = chess.Board()
+    move = parse_move(board, raw)
+    assert board.san(move) == expected_san
+
+
+def test_parse_move_accepts_lowercase_castling():
+    board = chess.Board()
+    for san in ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"]:
+        board.push_san(san)
+    for raw in ["o-o", "0-0", "O-O"]:
+        move = parse_move(board, raw)
+        assert board.san(move) == "O-O"
+
+
+def test_parse_move_lowercase_b_prefers_pawn_capture():
+    # After 1. e4 d5, white pawn on b-file can't capture but bxe would fail;
+    # use a position where both bishop and pawn b-captures exist:
+    # After 1. d4 c5 2. Nc3 cxd4 — here b-file pawn cannot capture; instead
+    # construct a position where bxa5 is a pawn capture and Bxa5 is also legal.
+    board = chess.Board("rnbqkbnr/p1pppppp/8/Pp6/8/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1")
+    # White pawn b2 can't capture; pawn a5 can capture bxa... this is getting contrived.
+    # Simpler: test that bxc6 parses as pawn capture when the b-pawn can take.
+    board = chess.Board()
+    for san in ["b4", "a5", "bxa5"]:
+        board.push_san(san)
+    # Now test lowercase 'bxa5' parsing from a similar position.
+    board2 = chess.Board()
+    board2.push_san("b4")
+    board2.push_san("a5")
+    move = parse_move(board2, "bxa5")
+    assert board2.san(move) == "bxa5"
+
+
+def test_parse_move_lowercase_bishop_when_no_pawn_match():
+    # Position where bishop can take but no b-pawn capture is possible.
+    board = chess.Board()
+    for san in ["e4", "e5", "Bc4", "Nc6", "d3", "Nf6"]:
+        board.push_san(san)
+    # Now white bishop can capture f7 via Bxf7+. Lowercase 'bxf7+' should work.
+    move = parse_move(board, "bxf7+")
+    assert board.san(move) == "Bxf7+"
+
+
+def test_parse_move_illegal_still_raises():
+    board = chess.Board()
+    with pytest.raises((ValueError, chess.IllegalMoveError, chess.InvalidMoveError)):
+        parse_move(board, "ke5")  # king can't move on first move

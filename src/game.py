@@ -24,6 +24,46 @@ def _color_name(color: chess.Color) -> str:
     return "White" if color == chess.WHITE else "Black"
 
 
+_SAN_PARSE_ERRORS = (
+    ValueError,
+    chess.IllegalMoveError,
+    chess.AmbiguousMoveError,
+    chess.InvalidMoveError,
+)
+
+
+def _normalize_san(raw: str) -> str | None:
+    """Return a case-normalized SAN variant, or None if no change applies.
+
+    - Castling: `o-o`, `0-0`, `o-o-o`, `0-0-0` (plus check/mate suffixes) → `O-O` / `O-O-O`.
+    - Piece moves: lowercase leading piece letter (`nf3`, `bxe5`, `qd4`) → capitalized.
+    """
+    s = raw.strip()
+    if not s:
+        return None
+
+    castling_check = s.upper().replace("0", "O")
+    bare = castling_check.rstrip("+#")
+    if bare in ("O-O", "O-O-O") and castling_check != s:
+        return castling_check
+
+    if s[0] in "nbrqk":
+        return s[0].upper() + s[1:]
+
+    return None
+
+
+def parse_move(board: chess.Board, raw: str) -> chess.Move:
+    """Parse SAN, accepting lowercase piece letters and `o-o` castling forms."""
+    try:
+        return board.parse_san(raw)
+    except _SAN_PARSE_ERRORS:
+        normalized = _normalize_san(raw)
+        if normalized is None or normalized == raw:
+            raise
+        return board.parse_san(normalized)
+
+
 @dataclass
 class Game:
     board: chess.Board = field(default_factory=chess.Board)
@@ -105,8 +145,8 @@ class Game:
                 continue
 
             try:
-                move = self.board.parse_san(raw)
-            except (ValueError, chess.IllegalMoveError, chess.AmbiguousMoveError, chess.InvalidMoveError) as exc:
+                move = parse_move(self.board, raw)
+            except _SAN_PARSE_ERRORS as exc:
                 self.say(f"Illegal or unrecognized move: {exc}")
                 continue
 
